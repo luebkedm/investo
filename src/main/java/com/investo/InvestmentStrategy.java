@@ -21,6 +21,7 @@ public class InvestmentStrategy {
         this.extraPaymentAmount = 0;
         this.extraPaymentYear = AppConfig.START_YEAR;
         this.monthlyPayout = 2500.0;
+        
     }
 
     public double getStartAmount() {

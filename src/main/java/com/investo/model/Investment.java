@@ -63,7 +63,7 @@ public class Investment {
         return dataPoints;
     }
 
-    public List<InvestmentDataPoint> calculatePayout(int startYear, int endYear, double initialAmount, double payoutAmount) {
+    public List<InvestmentDataPoint> calculatePayout(int startYear, int endYear, double initialAmount, double payoutAmount, double monthlyPension) {
         List<InvestmentDataPoint> dataPoints = new ArrayList<>();
         double currentAmount = initialAmount;
 
@@ -72,6 +72,8 @@ public class Investment {
                 double timePoint = year + (month - 1) / (double) AppConfig.MONTHS_PER_YEAR;
                 dataPoints.add(new InvestmentDataPoint(timePoint, currentAmount));
 
+                // Add monthly pension income (to the bank account), then subtract the requested payout
+                currentAmount += monthlyPension;
                 currentAmount -= payoutAmount;
                 if (currentAmount < 0) currentAmount = 0;
 
@@ -125,6 +127,8 @@ public class Investment {
     public void setExtraPaymentYear(int extraPaymentYear) {
         this.extraPaymentYear = extraPaymentYear;
     }
+
+    
 
     public void setTaxRate(double taxRatePercent) {
         this.taxRate = taxRatePercent / 100.0;

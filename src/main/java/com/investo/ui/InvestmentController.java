@@ -39,6 +39,7 @@ public class InvestmentController implements Initializable {
     private TextField endYearField;
     private TextField phase2EndYearField;
     private TextField taxRateField;
+    private TextField pensionField;
 
     private static final Path STORAGE_PATH = Paths.get(System.getProperty("user.home"), ".investo", "strategies.xml");
 
@@ -123,7 +124,16 @@ public class InvestmentController implements Initializable {
             }
         });
 
-        titleBar.getChildren().addAll(titleLabel, spacer, taxLabel, taxRateField, endYearLabel, endYearField, p2EndYearLabel, phase2EndYearField);
+        Label pensionLabel = new Label("Pension (€):");
+        pensionField = new TextField("0.0");
+        pensionField.setPrefWidth(80);
+        pensionField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
+        pensionField.setOnAction(e -> updateChart());
+        pensionField.focusedProperty().addListener((obs, oldValue, newValue) -> {
+            if (!newValue) updateChart();
+        });
+
+        titleBar.getChildren().addAll(titleLabel, spacer, taxLabel, taxRateField, endYearLabel, endYearField, p2EndYearLabel, phase2EndYearField, pensionLabel, pensionField);
         return titleBar;
     }
 
@@ -220,10 +230,21 @@ public class InvestmentController implements Initializable {
 
                 // Calculate Phase 2
                 double p2StartAmount = dataPoints.isEmpty() ? strategy.getStartAmount() : dataPoints.get(dataPoints.size() - 1).getAmount();
-                List<InvestmentDataPoint> p2Points = investment.calculatePayout(endYear, phase2EndYear, p2StartAmount, strategy.getMonthlyPayout());
-                
+                double monthlyPension = 0.0;
+                try {
+                    monthlyPension = Double.parseDouble(pensionField.getText());
+                } catch (NumberFormatException ignored) {
+                    // keep default 0.0
+                }
+
+                List<InvestmentDataPoint> p2Points = investment.calculatePayout(endYear, phase2EndYear, p2StartAmount, strategy.getMonthlyPayout(), monthlyPension);
+
                 XYChart.Series<Number, Number> p2Series = new XYChart.Series<>();
-                p2Series.setName(String.format("Payout: €%.0f/mo", strategy.getMonthlyPayout()));
+                if (monthlyPension > 0) {
+                    p2Series.setName(String.format("Payout: €%.0f/mo + Pension: €%.0f/mo", strategy.getMonthlyPayout(), monthlyPension));
+                } else {
+                    p2Series.setName(String.format("Payout: €%.0f/mo", strategy.getMonthlyPayout()));
+                }
                 
                 for (InvestmentDataPoint point : p2Points) {
                     p2Series.getData().add(new XYChart.Data<>(point.getTimePoint(), point.getAmount()));
