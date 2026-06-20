@@ -29,10 +29,8 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 public class InvestmentController implements Initializable {
-    private InvestmentChartPane chartPane;
-    private LineChart<Number, Number> lineChart;
-    private InvestmentChartPane payoutChartPane;
-    private LineChart<Number, Number> payoutLineChart;
+    private InvestmentChartPane investmentChartPane;
+    private LineChart<Number, Number> investmentChart;
     private StrategyListView strategyListView;
     private Button deleteStrategyButton;
     private Label finalAmountLabel;
@@ -52,13 +50,10 @@ public class InvestmentController implements Initializable {
         HBox titleBar = createTitleBar();
 
         HBox chartsBox = new HBox(10);
-        chartPane = new InvestmentChartPane("Accumulation Phase");
-        lineChart = chartPane.getLineChart();
-        payoutChartPane = new InvestmentChartPane("Payout Phase");
-        payoutLineChart = payoutChartPane.getLineChart();
-        chartsBox.getChildren().addAll(chartPane, payoutChartPane);
-        HBox.setHgrow(chartPane, Priority.ALWAYS);
-        HBox.setHgrow(payoutChartPane, Priority.ALWAYS);
+        investmentChartPane = new InvestmentChartPane("Investment Chart");
+        investmentChart = investmentChartPane.getLineChart();
+        chartsBox.getChildren().add(investmentChartPane);
+        HBox.setHgrow(investmentChartPane, Priority.ALWAYS);
 
         HBox controlButtons = createStrategyButtons();
         strategyListView = new StrategyListView(this::updateChart, this::handleSelectionChanged);
@@ -198,11 +193,9 @@ public class InvestmentController implements Initializable {
                 return;
             }
 
-            chartPane.setYearRange(AppConfig.START_YEAR, endYear);
-            payoutChartPane.setYearRange(endYear, phase2EndYear);
+            investmentChartPane.setYearRange(AppConfig.START_YEAR, phase2EndYear);
 
-            lineChart.getData().clear();
-            payoutLineChart.getData().clear();
+            investmentChart.getData().clear();
 
             for (InvestmentStrategy strategy : strategyListView.getStrategies()) {
                 Investment investment = new Investment(strategy.getStartAmount(), strategy.getAnnualInterestRate(), strategy.getLineColor());
@@ -216,8 +209,14 @@ public class InvestmentController implements Initializable {
                 series.setName(String.format("€%.0f @ %.2f%% + €%.0f/mo", strategy.getStartAmount(),
                         strategy.getAnnualInterestRate(), strategy.getMonthlySaveAmount()));
 
+                // Add accumulation points only up to the phase 1 end (inclusive)
+                double lastAccumulationAmount = strategy.getStartAmount();
+                double phase1Cutoff = endYear; // we want accumulation to end at the start of endYear
                 for (InvestmentDataPoint point : dataPoints) {
-                    series.getData().add(new XYChart.Data<>(point.getTimePoint(), point.getAmount()));
+                    if (point.getTimePoint() <= phase1Cutoff) {
+                        series.getData().add(new XYChart.Data<>(point.getTimePoint(), point.getAmount()));
+                        lastAccumulationAmount = point.getAmount();
+                    }
                 }
 
                 String lineColor = normalizeColor(strategy.getLineColor());
@@ -226,10 +225,10 @@ public class InvestmentController implements Initializable {
                         newNode.setStyle(String.format("-fx-stroke: %s; -fx-stroke-width: 2px;", lineColor));
                     }
                 });
-                lineChart.getData().add(series);
+                investmentChart.getData().add(series);
 
                 // Calculate Phase 2
-                double p2StartAmount = dataPoints.isEmpty() ? strategy.getStartAmount() : dataPoints.get(dataPoints.size() - 1).getAmount();
+                double p2StartAmount = lastAccumulationAmount;
                 double monthlyPension = 0.0;
                 try {
                     monthlyPension = Double.parseDouble(pensionField.getText());
@@ -245,7 +244,7 @@ public class InvestmentController implements Initializable {
                 } else {
                     p2Series.setName(String.format("Payout: €%.0f/mo", strategy.getMonthlyPayout()));
                 }
-                
+
                 for (InvestmentDataPoint point : p2Points) {
                     p2Series.getData().add(new XYChart.Data<>(point.getTimePoint(), point.getAmount()));
                 }
@@ -255,7 +254,7 @@ public class InvestmentController implements Initializable {
                         newNode.setStyle(String.format("-fx-stroke: %s; -fx-stroke-width: 2px;", lineColor));
                     }
                 });
-                payoutLineChart.getData().add(p2Series);
+                investmentChart.getData().add(p2Series);
             }
 
             updateFinalAmountLabel(strategyListView.getSelectedStrategy());

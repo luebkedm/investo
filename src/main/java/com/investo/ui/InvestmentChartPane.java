@@ -3,7 +3,6 @@ package com.investo.ui;
 import com.investo.AppConfig;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
-import javafx.scene.chart.XYChart;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.Label;
