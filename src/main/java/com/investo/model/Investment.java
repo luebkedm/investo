@@ -28,14 +28,14 @@ public class Investment {
     }
 
     public List<InvestmentDataPoint> calculateGrowth() {
-        return calculateGrowth(AppConfig.END_YEAR);
+        return calculateGrowth(AppConfig.RETIREMENT_YEAR);
     }
 
-    public List<InvestmentDataPoint> calculateGrowth(int endYear) {
+    public List<InvestmentDataPoint> calculateGrowth(int retirementYear) {
         List<InvestmentDataPoint> dataPoints = new ArrayList<>();
         double currentAmount = startAmount;
 
-        for (int year = AppConfig.START_YEAR; year <= endYear; year++) {
+        for (int year = AppConfig.START_YEAR; year <= retirementYear; year++) {
             if (year == extraPaymentYear) {
                 currentAmount += extraPaymentAmount;
             }
@@ -63,11 +63,11 @@ public class Investment {
         return dataPoints;
     }
 
-    public List<InvestmentDataPoint> calculatePayout(int startYear, int endYear, double initialAmount, double payoutAmount, double monthlyPension) {
+    public List<InvestmentDataPoint> calculatePayout(int retirementYear, int phase2EndYear, double initialAmount, double payoutAmount, double monthlyPension) {
         List<InvestmentDataPoint> dataPoints = new ArrayList<>();
         double currentAmount = initialAmount;
 
-        for (int year = startYear; year <= endYear; year++) {
+        for (int year = retirementYear; year <= phase2EndYear; year++) {
             for (int month = 1; month <= AppConfig.MONTHS_PER_YEAR; month++) {
                 double timePoint = year + (month - 1) / (double) AppConfig.MONTHS_PER_YEAR;
                 dataPoints.add(new InvestmentDataPoint(timePoint, currentAmount));

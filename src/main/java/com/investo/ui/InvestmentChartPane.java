@@ -35,7 +35,7 @@ public class InvestmentChartPane extends StackPane {
     }
 
     private LineChart<Number, Number> createLineChart(String title) {
-        NumberAxis xAxis = new NumberAxis(AppConfig.START_YEAR, AppConfig.END_YEAR, 5);
+        NumberAxis xAxis = new NumberAxis(AppConfig.START_YEAR, AppConfig.RETIREMENT_YEAR, 5);
         xAxis.setLabel("Year");
         xAxis.setAutoRanging(false);
 

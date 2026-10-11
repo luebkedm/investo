@@ -19,6 +19,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
     private final TextField monthlyPayoutField = new TextField();
     private final TextField extraAmountField = new TextField();
     private final TextField extraYearField = new TextField();
+    private final TextField retirementYearField = new TextField();
     private final Button lineColorButton = new Button("Color");
     private final ColorPicker lineColorPicker = new ColorPicker();
     private final HBox content;
@@ -33,6 +34,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
         monthlyPayoutField.setPrefWidth(80);
         extraAmountField.setPrefWidth(80);
         extraYearField.setPrefWidth(60);
+        retirementYearField.setPrefWidth(60);
         lineColorButton.setPrefWidth(90);
         startAmountField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
         interestRateField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
@@ -40,6 +42,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
         monthlyPayoutField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
         extraAmountField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
         extraYearField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
+        retirementYearField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
         lineColorButton.setStyle("-fx-font-size: 12; -fx-padding: 4;");
 
         lineColorPicker.setVisible(false);
@@ -51,6 +54,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
         HBox.setHgrow(monthlyPayoutField, Priority.NEVER);
         HBox.setHgrow(extraAmountField, Priority.NEVER);
         HBox.setHgrow(extraYearField, Priority.NEVER);
+        HBox.setHgrow(retirementYearField, Priority.NEVER);
         HBox.setHgrow(lineColorButton, Priority.NEVER);
 
         Label extraLabel = new Label("Extra:");
@@ -61,6 +65,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
                 new Label("Rate:"), interestRateField,
                 new Label("Save:"), monthlySaveField,
                 new Label("Payout:"), monthlyPayoutField,
+                new Label("Retirement:"), retirementYearField,
                 extraLabel, extraAmountField,
                 new Label("at Yr:"), extraYearField,
                 new Label("Color:"), lineColorButton, lineColorPicker);
@@ -110,6 +115,13 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
         });
         extraYearField.setOnAction(e -> updateItemValues());
 
+        retirementYearField.focusedProperty().addListener((obs, oldValue, newValue) -> {
+            if (!newValue) {
+                updateItemValues();
+            }
+        });
+        retirementYearField.setOnAction(e -> updateItemValues());
+
         lineColorButton.setOnAction(e -> lineColorPicker.show());
         lineColorPicker.setOnAction(e -> {
             updateItemValues();
@@ -130,6 +142,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
             monthlyPayoutField.setText(String.valueOf(strategy.getMonthlyPayout()));
             extraAmountField.setText(String.valueOf(strategy.getExtraPaymentAmount()));
             extraYearField.setText(String.valueOf(strategy.getExtraPaymentYear()));
+            retirementYearField.setText(String.valueOf(strategy.getRetirementYear()));
             lineColorPicker.setValue(parseColor(strategy.getLineColor()));
             updateButtonColor();
             setGraphic(content);
@@ -148,6 +161,7 @@ public class StrategyCell extends ListCell<InvestmentStrategy> {
             strategy.setMonthlyPayout(Double.parseDouble(monthlyPayoutField.getText()));
             strategy.setExtraPaymentAmount(Double.parseDouble(extraAmountField.getText()));
             strategy.setExtraPaymentYear(Integer.parseInt(extraYearField.getText()));
+            strategy.setRetirementYear(Integer.parseInt(retirementYearField.getText()));
             strategy.setLineColor(toHexColor(lineColorPicker.getValue()));
             refreshCallback.run();
         } catch (NumberFormatException ignored) {

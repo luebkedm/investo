@@ -8,6 +8,7 @@ public class InvestmentStrategy {
     private double extraPaymentAmount;
     private int extraPaymentYear;
     private double monthlyPayout;
+    private int retirementYear;
 
     public InvestmentStrategy() {
         this(10000, 3, 0, "#1f77b4");
@@ -21,6 +22,7 @@ public class InvestmentStrategy {
         this.extraPaymentAmount = 0;
         this.extraPaymentYear = AppConfig.START_YEAR;
         this.monthlyPayout = 2500.0;
+        this.retirementYear = AppConfig.RETIREMENT_YEAR;
         
     }
 
@@ -78,5 +80,32 @@ public class InvestmentStrategy {
 
     public void setMonthlyPayout(double monthlyPayout) {
         this.monthlyPayout = monthlyPayout;
+    }
+
+    public int getRetirementYear() {
+        return retirementYear;
+    }
+
+    public void setRetirementYear(int retirementYear) {
+        this.retirementYear = retirementYear;
+    }
+
+    /**
+     * @deprecated Use {@link #getRetirementYear()} instead. Kept for
+     *             backward compatibility with previously saved strategies.
+     */
+    @Deprecated
+    @java.beans.Transient
+    public int getEndYear() {
+        return retirementYear;
+    }
+
+    /**
+     * @deprecated Use {@link #setRetirementYear(int)} instead. Kept for
+     *             backward compatibility with previously saved strategies.
+     */
+    @Deprecated
+    public void setEndYear(int endYear) {
+        this.retirementYear = endYear;
     }
 }

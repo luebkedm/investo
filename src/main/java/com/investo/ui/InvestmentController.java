@@ -34,7 +34,6 @@ public class InvestmentController implements Initializable {
     private StrategyListView strategyListView;
     private Button deleteStrategyButton;
     private Label finalAmountLabel;
-    private TextField endYearField;
     private TextField phase2EndYearField;
     private TextField taxRateField;
     private TextField pensionField;
@@ -97,17 +96,6 @@ public class InvestmentController implements Initializable {
             }
         });
 
-        Label endYearLabel = new Label("End Year:");
-        endYearField = new TextField(String.valueOf(AppConfig.END_YEAR));
-        endYearField.setPrefWidth(80);
-        endYearField.setStyle("-fx-font-size: 12; -fx-padding: 4;");
-        endYearField.setOnAction(e -> updateChart());
-        endYearField.focusedProperty().addListener((obs, oldValue, newValue) -> {
-            if (!newValue) {
-                updateChart();
-            }
-        });
-
         Label p2EndYearLabel = new Label("P2 End Year:");
         phase2EndYearField = new TextField("2065");
         phase2EndYearField.setPrefWidth(80);
@@ -128,7 +116,7 @@ public class InvestmentController implements Initializable {
             if (!newValue) updateChart();
         });
 
-        titleBar.getChildren().addAll(titleLabel, spacer, taxLabel, taxRateField, endYearLabel, endYearField, p2EndYearLabel, phase2EndYearField, pensionLabel, pensionField);
+        titleBar.getChildren().addAll(titleLabel, spacer, taxLabel, taxRateField, p2EndYearLabel, phase2EndYearField, pensionLabel, pensionField);
         return titleBar;
     }
 
@@ -163,26 +151,11 @@ public class InvestmentController implements Initializable {
 
     private void updateChart() {
         try {
-            int endYear = AppConfig.END_YEAR;
-            try {
-                endYear = Integer.parseInt(endYearField.getText());
-            } catch (NumberFormatException ignored) {
-                showErrorAlert("End year must be a valid integer");
-                return;
-            }
             int phase2EndYear = 2065;
             try {
                 phase2EndYear = Integer.parseInt(phase2EndYearField.getText());
             } catch (NumberFormatException ignored) {
                 showErrorAlert("P2 End year must be a valid integer");
-                return;
-            }
-            if (endYear < AppConfig.START_YEAR) {
-                showErrorAlert("End year must be >= " + AppConfig.START_YEAR);
-                return;
-            }
-            if (phase2EndYear < endYear) {
-                showErrorAlert("P2 End year must be >= Phase 1 End year");
                 return;
             }
             double taxRate;
@@ -193,25 +166,37 @@ public class InvestmentController implements Initializable {
                 return;
             }
 
+            for (InvestmentStrategy s : strategyListView.getStrategies()) {
+                if (s.getRetirementYear() < AppConfig.START_YEAR) {
+                    showErrorAlert("Retirement year must be >= " + AppConfig.START_YEAR);
+                    return;
+                }
+                if (phase2EndYear < s.getRetirementYear()) {
+                    showErrorAlert("P2 End year must be >= retirement year");
+                    return;
+                }
+            }
+
             investmentChartPane.setYearRange(AppConfig.START_YEAR, phase2EndYear);
 
             investmentChart.getData().clear();
 
             for (InvestmentStrategy strategy : strategyListView.getStrategies()) {
+                int retirementYear = strategy.getRetirementYear();
                 Investment investment = new Investment(strategy.getStartAmount(), strategy.getAnnualInterestRate(), strategy.getLineColor());
                 investment.setMonthlySaveAmount(strategy.getMonthlySaveAmount());
                 investment.setExtraPaymentAmount(strategy.getExtraPaymentAmount());
                 investment.setExtraPaymentYear(strategy.getExtraPaymentYear());
                 investment.setTaxRate(taxRate);
 
-                List<InvestmentDataPoint> dataPoints = investment.calculateGrowth(endYear);
+                List<InvestmentDataPoint> dataPoints = investment.calculateGrowth(retirementYear);
                 XYChart.Series<Number, Number> series = new XYChart.Series<>();
                 series.setName(String.format("€%.0f @ %.2f%% + €%.0f/mo", strategy.getStartAmount(),
                         strategy.getAnnualInterestRate(), strategy.getMonthlySaveAmount()));
 
                 // Add accumulation points only up to the phase 1 end (inclusive)
                 double lastAccumulationAmount = strategy.getStartAmount();
-                double phase1Cutoff = endYear; // we want accumulation to end at the start of endYear
+                double phase1Cutoff = retirementYear; // we want accumulation to end at the start of retirementYear
                 for (InvestmentDataPoint point : dataPoints) {
                     if (point.getTimePoint() <= phase1Cutoff) {
                         series.getData().add(new XYChart.Data<>(point.getTimePoint(), point.getAmount()));
@@ -236,7 +221,7 @@ public class InvestmentController implements Initializable {
                     // keep default 0.0
                 }
 
-                List<InvestmentDataPoint> p2Points = investment.calculatePayout(endYear, phase2EndYear, p2StartAmount, strategy.getMonthlyPayout(), monthlyPension);
+                List<InvestmentDataPoint> p2Points = investment.calculatePayout(retirementYear, phase2EndYear, p2StartAmount, strategy.getMonthlyPayout(), monthlyPension);
 
                 XYChart.Series<Number, Number> p2Series = new XYChart.Series<>();
                 if (monthlyPension > 0) {
@@ -292,12 +277,7 @@ public class InvestmentController implements Initializable {
         investment.setMonthlySaveAmount(strategy.getMonthlySaveAmount());
         investment.setExtraPaymentAmount(strategy.getExtraPaymentAmount());
         investment.setExtraPaymentYear(strategy.getExtraPaymentYear());
-        int endYear = AppConfig.END_YEAR;
-        try {
-            endYear = Integer.parseInt(endYearField.getText());
-        } catch (NumberFormatException ignored) {
-            // keep default if invalid
-        }
+        int retirementYear = strategy.getRetirementYear();
         double taxRate = 25.0;
         try {
             taxRate = Double.parseDouble(taxRateField.getText());
@@ -306,7 +286,7 @@ public class InvestmentController implements Initializable {
         }
         investment.setTaxRate(taxRate);
 
-        List<InvestmentDataPoint> points = investment.calculateGrowth(endYear);
+        List<InvestmentDataPoint> points = investment.calculateGrowth(retirementYear);
         if (points.isEmpty()) {
             finalAmountLabel.setText("Final Amount: €0.00");
         } else {
@@ -333,7 +313,15 @@ public class InvestmentController implements Initializable {
         try {
             Files.createDirectories(STORAGE_PATH.getParent());
             try (XMLEncoder encoder = new XMLEncoder(new BufferedOutputStream(new FileOutputStream(STORAGE_PATH.toFile())))) {
-                encoder.writeObject(new ArrayList<>(strategyListView.getStrategies()));
+                com.investo.SavedState state = new com.investo.SavedState();
+                state.setStrategies(new ArrayList<>(strategyListView.getStrategies()));
+                double pensionVal = 0.0;
+                try {
+                    pensionVal = Double.parseDouble(pensionField.getText());
+                } catch (NumberFormatException ignored) {
+                }
+                state.setPension(pensionVal);
+                encoder.writeObject(state);
             }
         } catch (IOException e) {
             System.err.println("Failed to save strategies: " + e.getMessage());
@@ -344,9 +332,33 @@ public class InvestmentController implements Initializable {
         if (!Files.exists(STORAGE_PATH)) return;
         try (XMLDecoder decoder = new XMLDecoder(new BufferedInputStream(new FileInputStream(STORAGE_PATH.toFile())))) {
             Object result = decoder.readObject();
-            if (result instanceof List) {
+            if (result instanceof com.investo.SavedState) {
+                com.investo.SavedState state = (com.investo.SavedState) result;
+                List<InvestmentStrategy> loaded = state.getStrategies();
+                if (loaded != null) {
+                    for (InvestmentStrategy s : loaded) {
+                        if (s.getRetirementYear() < AppConfig.START_YEAR) {
+                            s.setRetirementYear(AppConfig.RETIREMENT_YEAR);
+                        }
+                    }
+                }
+                if (loaded != null && !loaded.isEmpty()) {
+                    strategyListView.getStrategies().setAll(loaded);
+                    strategyListView.getSelectionModel().selectFirst();
+                } else if (loaded != null) {
+                    strategyListView.getStrategies().setAll(loaded);
+                }
+                // restore pension field
+                pensionField.setText(String.valueOf(state.getPension()));
+                updateChart();
+            } else if (result instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<InvestmentStrategy> loaded = (List<InvestmentStrategy>) result;
+                for (InvestmentStrategy s : loaded) {
+                    if (s.getRetirementYear() < AppConfig.START_YEAR) {
+                        s.setRetirementYear(AppConfig.RETIREMENT_YEAR);
+                    }
+                }
                 if (!loaded.isEmpty()) {
                     strategyListView.getStrategies().setAll(loaded);
                     strategyListView.getSelectionModel().selectFirst();
